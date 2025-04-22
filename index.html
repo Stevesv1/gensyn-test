@@ -1,0 +1,812 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Gensyn Node Status</title>
+    <link href="https://fonts.googleapis.com/css2?family=Lexend:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/ethers/5.7.2/ethers.umd.min.js"></script>
+    <style>
+        :root {
+            --primary: #4f46e5;
+            --primary-glow: rgba(79, 70, 229, 0.5);
+            --primary-dark: #4338ca;
+            --secondary: #10b981;
+            --accent: #8b5cf6;
+            --background: #0f172a;
+            --card-bg: #1e293b;
+            --card-bg-hover: #2d3748;
+            --text: #f1f5f9;
+            --text-light: #94a3b8;
+            --border: #334155;
+            --shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.3), 0 4px 6px -2px rgba(0, 0, 0, 0.2);
+            --glow: 0 0 15px var(--primary-glow);
+            --online: #10b981;
+            --offline: #ef4444;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            transition: all 0.3s ease;
+        }
+
+        body {
+            font-family: 'Lexend', sans-serif;
+            background: linear-gradient(135deg, var(--background) 0%, #1a202c 100%);
+            color: var(--text);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 2rem 1rem;
+        }
+
+        .container {
+            width: 100%;
+            max-width: 800px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 3rem;
+            position: relative;
+        }
+
+        .title2 {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 1.5rem;
+        }
+
+        h1 {
+            font-weight: 700;
+            font-size: 2.5rem;
+            color: var(--text);
+            margin-bottom: 0.75rem;
+            position: relative;
+            display: inline-block;
+        }
+
+        h1::after {
+            content: '';
+            position: absolute;
+            bottom: -0.5rem;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50%;
+            height: 4px;
+            background: linear-gradient(90deg, transparent, var(--primary), transparent);
+        }
+
+        .card {
+            background-color: var(--card-bg);
+            border-radius: 1rem;
+            box-shadow: var(--shadow);
+            padding: 2.5rem;
+            margin-bottom: 2.5rem;
+            border: 1px solid var(--border);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 4px;
+            background: linear-gradient(90deg, var(--secondary), var(--primary), var(--accent));
+        }
+
+        .input-group {
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 2rem;
+        }
+
+        .tabs {
+            display: flex;
+            margin-bottom: 2rem;
+            border-radius: 0.75rem;
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .tab {
+            flex: 1;
+            padding: 1rem;
+            text-align: center;
+            cursor: pointer;
+            font-weight: 600;
+            background-color: rgba(15, 23, 42, 0.5);
+            transition: all 0.3s;
+        }
+
+        .tab.active {
+            background-color: var(--primary);
+            color: white;
+        }
+
+        label {
+            font-size: 0.875rem;
+            font-weight: 600;
+            letter-spacing: 0.05em;
+            margin-bottom: 0.75rem;
+            color: var(--text);
+            text-transform: uppercase;
+        }
+
+        input {
+            font-family: 'Inter', sans-serif;
+            padding: 1rem 1.25rem;
+            border: 1px solid var(--border);
+            background-color: rgba(15, 23, 42, 0.5);
+            border-radius: 0.75rem;
+            font-size: 1rem;
+            color: var(--text);
+            transition: all 0.3s;
+        }
+
+        input:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 3px rgba(79, 70, 229, 0.3);
+        }
+
+        input::placeholder {
+            color: var(--text-light);
+            opacity: 0.6;
+        }
+
+        button {
+            font-family: 'Inter', sans-serif;
+            background: linear-gradient(135deg, var(--primary) 0%, var(--primary-dark) 100%);
+            color: white;
+            border: none;
+            border-radius: 0.75rem;
+            padding: 1rem 2rem;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            position: relative;
+            overflow: hidden;
+            letter-spacing: 0.05em;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            width: 100%;
+        }
+
+        button:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--glow), 0 10px 20px rgba(0, 0, 0, 0.2);
+        }
+
+        button:active {
+            transform: translateY(1px);
+        }
+
+        button::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            transition: 0.5s;
+            transform: translateX(-100%);
+        }
+
+        button:hover::after {
+            transform: translateX(100%);
+        }
+
+        .loader {
+            display: none;
+            width: 50px;
+            height: 50px;
+            border: 4px solid rgba(79, 70, 229, 0.1);
+            border-radius: 50%;
+            border-top-color: var(--primary);
+            animation: spin 1s linear infinite;
+            margin: 2.5rem auto;
+            box-shadow: var(--glow);
+        }
+
+        @keyframes spin {
+            to {
+                transform: rotate(360deg);
+            }
+        }
+
+        .result-section {
+            display: none;
+            margin-top: 2rem;
+            animation: fadeIn 0.5s ease;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(20px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        .result-card {
+            background-color: var(--card-bg);
+            border-radius: 1rem;
+            box-shadow: var(--shadow);
+            overflow: hidden;
+            border: 1px solid var(--border);
+        }
+
+        .result-header {
+            background: linear-gradient(135deg, var(--primary) 0%, var(--accent) 100%);
+            color: white;
+            padding: 1.25rem;
+            text-align: center;
+            font-weight: 600;
+            font-size: 1.25rem;
+            position: relative;
+            overflow: hidden;
+        }
+
+        .result-header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.1), transparent);
+            animation: shimmer 2s infinite;
+        }
+
+        @keyframes shimmer {
+            0% { transform: translateX(-100%); }
+            100% { transform: translateX(100%); }
+        }
+
+        .result-content {
+            padding: 2rem;
+        }
+
+        .result-section h2 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            margin-bottom: 1.5rem;
+            color: var(--text);
+            position: relative;
+            display: inline-block;
+        }
+
+        .result-section h2::after {
+            content: '';
+            position: absolute;
+            bottom: -0.5rem;
+            left: 0;
+            width: 50%;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary), transparent);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: 1fr;
+            gap: 1.25rem;
+        }
+
+        @media (min-width: 640px) {
+            .info-grid {
+                grid-template-columns: 1fr 1fr;
+            }
+        }
+
+        .info-item {
+            background-color: rgba(15, 23, 42, 0.5);
+            border-radius: 0.75rem;
+            padding: 1.25rem;
+            border: 1px solid var(--border);
+            transition: all 0.3s;
+        }
+
+        .info-item:hover {
+            transform: translateY(-3px);
+            box-shadow: var(--glow);
+            background-color: var(--card-bg-hover);
+        }
+
+        .info-label {
+            color: var(--text-light);
+            font-size: 0.875rem;
+            margin-bottom: 0.5rem;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            font-weight: 500;
+        }
+
+        .info-value {
+            font-weight: 600;
+            font-size: 1.125rem;
+            word-break: break-all;
+            color: var(--text);
+        }
+
+        .status-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            margin-right: 5px;
+        }
+
+        .status-dot.online {
+            background-color: var(--online);
+            box-shadow: 0 0 10px var(--online);
+        }
+
+        .status-dot.offline {
+            background-color: var(--offline);
+            box-shadow: 0 0 10px var(--offline);
+        }
+
+        .network-info {
+            margin-top: 2.5rem;
+        }
+
+        .error-message {
+            display: none;
+            background-color: rgba(220, 38, 38, 0.1);
+            color: #ef4444;
+            padding: 1.25rem;
+            border-radius: 0.75rem;
+            margin-top: 1.5rem;
+            text-align: center;
+            border: 1px solid rgba(220, 38, 38, 0.3);
+            animation: fadeIn 0.5s ease;
+        }
+
+        footer {
+            margin-top: auto;
+            padding: 2rem 0;
+            text-align: center;
+            color: var(--text-light);
+            font-size: 0.875rem;
+            width: 100%;
+            position: relative;
+        }
+
+        footer::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 50%;
+            height: 1px;
+            background: linear-gradient(90deg, transparent, var(--border), transparent);
+        }
+
+        footer a {
+            color: var(--primary);
+            text-decoration: none;
+            transition: all 0.3s;
+        }
+
+        footer a:hover {
+            color: var(--accent);
+            text-decoration: underline;
+        }
+
+        .share-section {
+            display: none;
+            margin-top: 1.5rem;
+            text-align: center;
+        }
+
+        .share-button {
+            background: #1D9BF0;
+            color: white;
+            border: none;
+            border-radius: 0.75rem;
+            padding: 0.75rem 1.5rem;
+            font-size: 0.875rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .share-button:hover {
+            background: #1A8CD8;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+        }
+
+        .share-button svg {
+            width: 16px;
+            height: 16px;
+            fill: currentColor;
+        }
+
+        .peer-name-section, .peer-name-item {
+            display: none;
+        }
+
+        /* Mobile responsiveness improvements */
+        @media (max-width: 480px) {
+            .card, .result-content {
+                padding: 1.5rem;
+            }
+            
+            h1 {
+                font-size: 1.75rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <div class="title2">
+                <h1>Gensyn Node Status</h1>
+            </div>
+        </header>
+
+        <div class="card">
+            <div class="tabs">
+                <div class="tab active" id="peerIdTab">Peer ID</div>
+                <div class="tab" id="peerNameTab">Peer Name</div>
+            </div>
+            
+            <div class="input-group" id="peerIdInput">
+                <label for="peerId">Node Peer ID</label>
+                <input type="text" id="peerId" placeholder="Enter your Peer ID (e.g., QmNe93g3h2teFwZciF54aX4itjXrqPMi2bVXemkWyxsomS)">
+            </div>
+            
+            <div class="input-group" id="peerNameInput" style="display: none;">
+                <label for="peerName">Node Peer Name</label>
+                <input type="text" id="peerName" placeholder="Enter your Peer Name (e.g., huge masked starfish)">
+            </div>
+            
+            <button id="checkStatus">Check Status</button>
+        </div>
+
+        <div class="loader" id="loader"></div>
+        <div class="error-message" id="errorMessage"></div>
+
+        <div class="result-section" id="resultSection">
+            <div class="result-card">
+                <div class="result-header">
+                    Node Status Results
+                </div>
+                <div class="result-content">
+                    <h2>Your Node Info</h2>
+                    <div class="info-grid">
+                        <div class="info-item">
+                            <div class="info-label">Peer ID</div>
+                            <div class="info-value" id="resultPeerId">-</div>
+                        </div>
+                        <div class="info-item peer-name-item">
+                            <div class="info-label">Peer Name</div>
+                            <div class="info-value" id="resultPeerName">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Connected EOA Address</div>
+                            <div class="info-value" id="resultEoa">-</div>
+                        </div>
+                        <div class="info-item">
+                            <div class="info-label">Total Wins</div>
+                            <div class="info-value" id="resultWins">-</div>
+                        </div>
+                        <div class="info-item peer-name-section">
+                            <div class="info-label">Status</div>
+                            <div class="info-value" id="resultStatus">-</div>
+                        </div>
+                        <div class="info-item peer-name-section">
+                            <div class="info-label">Score</div>
+                            <div class="info-value" id="resultScore">-</div>
+                        </div>
+                        <div class="info-item peer-name-section">
+                            <div class="info-label">Reward</div>
+                            <div class="info-value" id="resultReward">-</div>
+                        </div>
+                    </div>
+
+                    <div class="network-info">
+                        <h2>Testnet Info</h2>
+                        <div class="info-grid">
+                            <div class="info-item">
+                                <div class="info-label">Current Round</div>
+                                <div class="info-value" id="resultRound">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Current Stage</div>
+                                <div class="info-value" id="resultStage">-</div>
+                            </div>
+                            <div class="info-item">
+                                <div class="info-label">Total Models Trained</div>
+                                <div class="info-value" id="resultTotalModels">-</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="share-section" id="shareSection">
+                <button id="shareButton" class="share-button">
+                    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+                        <path d="M23 3.01s-3.21-.5-6.91-.5c-3.69 0-7.37.25-11.09.5v2c3.72-.25 7.4-.5 11.09-.5 3.7 0 6.91.5 6.91.5V3.01zm-6 15s-2.19-.5-5.91-.5c-3.72 0-7.38.25-11.09.5v2c3.71-.25 7.37-.5 11.09-.5 3.72 0 5.91.5 5.91.5v-2zm4-8s-2.19-.5-5.91-.5c-3.72 0-7.38.25-11.09.5v2c3.71-.25 7.37-.5 11.09-.5 3.72 0 5.91.5 5.91.5v-2z"/>
+                    </svg>
+                    Share on X
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <footer>
+        Made with love by <a href="https://x.com/zun2025" target="_blank">Zun</a>
+    </footer>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const RPC_URL = "https://gensyn-testnet.g.alchemy.com/public";
+            const CONTRACT_ADDRESS = "0x2fC68a233EF9E9509f034DD551FF90A79a0B8F82";
+            const IMPLEMENTATION_ABI = [
+                "function getEoa(string[] peerIds) view returns (address[])",
+                "function getTotalWins(string peerId) view returns (uint256)",
+                "function currentStage() view returns (uint256)",
+                "function currentRound() view returns (uint256)",
+                "function uniqueVoters() view returns (uint256)"
+            ];
+    
+            const checkStatusBtn = document.getElementById('checkStatus');
+            const peerIdInput = document.getElementById('peerId');
+            const peerNameInput = document.getElementById('peerName');
+            const peerIdTab = document.getElementById('peerIdTab');
+            const peerNameTab = document.getElementById('peerNameTab');
+            const peerIdInputGroup = document.getElementById('peerIdInput');
+            const peerNameInputGroup = document.getElementById('peerNameInput');
+            const loader = document.getElementById('loader');
+            const resultSection = document.getElementById('resultSection');
+            const errorMessage = document.getElementById('errorMessage');
+            const shareSection = document.getElementById('shareSection');
+            const shareButton = document.getElementById('shareButton');
+            
+            const resultPeerId = document.getElementById('resultPeerId');
+            const resultPeerName = document.getElementById('resultPeerName');
+            const resultEoa = document.getElementById('resultEoa');
+            const resultWins = document.getElementById('resultWins');
+            const resultRound = document.getElementById('resultRound');
+            const resultStage = document.getElementById('resultStage');
+            const resultTotalModels = document.getElementById('resultTotalModels');
+            const resultStatus = document.getElementById('resultStatus');
+            const resultScore = document.getElementById('resultScore');
+            const resultReward = document.getElementById('resultReward');
+            const peerNameElements = document.querySelectorAll('.peer-name-section');
+            const peerNameItem = document.querySelector('.peer-name-item');
+    
+            let activeTab = 'peerId'; // Track active tab
+    
+            // Tab switching functionality
+            peerIdTab.addEventListener('click', () => {
+                peerIdTab.classList.add('active');
+                peerNameTab.classList.remove('active');
+                peerIdInputGroup.style.display = 'flex';
+                peerNameInputGroup.style.display = 'none';
+                activeTab = 'peerId';
+            });
+    
+            peerNameTab.addEventListener('click', () => {
+                peerNameTab.classList.add('active');
+                peerIdTab.classList.remove('active');
+                peerNameInputGroup.style.display = 'flex';
+                peerIdInputGroup.style.display = 'none';
+                activeTab = 'peerName';
+            });
+    
+            async function queryPeer(peerId) {
+                try {
+                    const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+                    const contract = new ethers.Contract(CONTRACT_ADDRESS, IMPLEMENTATION_ABI, provider);
+    
+                    const [
+                        eoaResult,
+                        wins,
+                        round,
+                        stage,
+                        totalModelsTrained
+                    ] = await Promise.all([
+                        contract.getEoa([peerId]),
+                        contract.getTotalWins(peerId),
+                        contract.currentRound(),
+                        contract.currentStage(),
+                        contract.uniqueVoters()
+                    ]);
+    
+                    const eoa = eoaResult[0];
+    
+                    resultPeerId.textContent = peerId;
+                    resultEoa.textContent = eoa;
+                    resultWins.textContent = wins.toString();
+                    resultRound.textContent = round.toString();
+                    resultStage.textContent = stage.toString();
+                    resultTotalModels.textContent = totalModelsTrained.toString();
+                    
+                    // Hide peer name specific elements
+                    peerNameElements.forEach(el => el.style.display = 'none');
+                    peerNameItem.style.display = 'none';
+    
+                    loader.style.display = 'none';
+                    resultSection.style.display = 'block';
+                    shareSection.style.display = 'block';
+                    errorMessage.style.display = 'none';
+                } catch (error) {
+                    console.error("Error:", error);
+        
+                    loader.style.display = 'none';
+                    resultSection.style.display = 'none';
+                    shareSection.style.display = 'none';
+                    errorMessage.style.display = 'block';
+                    errorMessage.textContent = `Error: ${error.message || 'Failed to fetch node data'}`;
+                }
+            }
+            
+            async function queryPeerByName(peerName) {
+                try {
+                    const encodedPeerName = encodeURIComponent(peerName);
+                    // Use the local API route instead of direct SWARM API
+                    const response = await fetch(`/api/proxy?name=${encodedPeerName}`);
+                    
+                    if (!response.ok) {
+                        throw new Error(`API responded with status: ${response.status}`);
+                    }
+                    
+                    const data = await response.json();
+                    const peerId = data.peerId;
+                    
+                    // Once we have the peerId, we can fetch additional data from the contract
+                    const provider = new ethers.providers.JsonRpcProvider(RPC_URL);
+                    const contract = new ethers.Contract(CONTRACT_ADDRESS, IMPLEMENTATION_ABI, provider);
+    
+                    const [
+                        eoaResult,
+                        wins,
+                        round,
+                        stage,
+                        totalModelsTrained
+                    ] = await Promise.all([
+                        contract.getEoa([peerId]),
+                        contract.getTotalWins(peerId),
+                        contract.currentRound(),
+                        contract.currentStage(),
+                        contract.uniqueVoters()
+                    ]);
+    
+                    const eoa = eoaResult[0];
+                    
+                    // Display data from both API and contract
+                    resultPeerId.textContent = peerId;
+                    resultPeerName.textContent = data.peerName;
+                    resultEoa.textContent = eoa;
+                    resultWins.textContent = wins.toString();
+                    resultRound.textContent = round.toString();
+                    resultStage.textContent = stage.toString();
+                    resultTotalModels.textContent = totalModelsTrained.toString();
+                    
+                    // Display peer name specific data
+                    resultStatus.innerHTML = data.online ? 
+                        '<div class="status-indicator"><div class="status-dot online"></div>Online</div>' : 
+                        '<div class="status-indicator"><div class="status-dot offline"></div>Offline</div>';
+                    resultScore.textContent = data.score;
+                    resultReward.textContent = parseFloat(data.reward).toFixed(2);
+                    
+                    // Show peer name specific elements
+                    peerNameElements.forEach(el => el.style.display = 'flex');
+                    peerNameItem.style.display = 'flex';
+    
+                    loader.style.display = 'none';
+                    resultSection.style.display = 'block';
+                    shareSection.style.display = 'block';
+                    errorMessage.style.display = 'none';
+                } catch (error) {
+                    console.error("Error:", error);
+        
+                    loader.style.display = 'none';
+                    resultSection.style.display = 'none';
+                    shareSection.style.display = 'none';
+                    errorMessage.style.display = 'block';
+                    errorMessage.textContent = `Error: ${error.message || 'Failed to fetch peer data'}`;
+                }
+            }
+    
+            function setupInputEffects(inputElement) {
+                inputElement.addEventListener('focus', () => {
+                    inputElement.style.boxShadow = '0 0 10px var(--primary-glow)';
+                });
+                
+                inputElement.addEventListener('blur', () => {
+                    inputElement.style.boxShadow = '';
+                });
+                
+                inputElement.addEventListener('keypress', (e) => {
+                    if (e.key === 'Enter') {
+                        checkStatusBtn.click();
+                    }
+                });
+            }
+    
+            setupInputEffects(peerIdInput);
+            setupInputEffects(peerNameInput);
+    
+            checkStatusBtn.addEventListener('click', () => {
+                if (activeTab === 'peerId') {
+                    const peerId = peerIdInput.value.trim();
+                    
+                    if (!peerId) {
+                        errorMessage.style.display = 'block';
+                        errorMessage.textContent = 'Please enter a valid Peer ID';
+                        return;
+                    }
+    
+                    loader.style.display = 'block';
+                    resultSection.style.display = 'none';
+                    shareSection.style.display = 'none';
+                    errorMessage.style.display = 'none';
+    
+                    queryPeer(peerId);
+                } else {
+                    const peerName = peerNameInput.value.trim();
+                    
+                    if (!peerName) {
+                        errorMessage.style.display = 'block';
+                        errorMessage.textContent = 'Please enter a valid Peer Name';
+                        return;
+                    }
+    
+                    loader.style.display = 'block';
+                    resultSection.style.display = 'none';
+                    shareSection.style.display = 'none';
+                    errorMessage.style.display = 'none';
+    
+                    queryPeerByName(peerName);
+                }
+            });
+    
+            shareButton.addEventListener('click', () => {
+                let shareText;
+                
+                if (activeTab === 'peerId' || resultPeerName.textContent === '-') {
+                    const peerId = resultPeerId.textContent;
+                    const wins = resultWins.textContent;
+                    const round = resultRound.textContent;
+                    
+                    shareText = encodeURIComponent(
+                        `My @gensynai node has ${wins} wins in round ${round}!\n\nCheck your node status too on https://gensyn-node.vercel.app (built by @zun2025)`
+                    );
+                } else {
+                    const peerName = resultPeerName.textContent;
+                    const wins = resultWins.textContent;
+                    const score = resultScore.textContent;
+                    const round = resultRound.textContent;
+                    
+                    shareText = encodeURIComponent(
+                        `My @gensynai node "${peerName}" has ${wins} wins and a score of ${score} in round ${round}!\n\nCheck your node status too on https://gensyn-node.vercel.app (built by @zun2025)`
+                    );
+                }
+                
+                const shareUrl = `https://twitter.com/intent/tweet?text=${shareText}`;
+                window.open(shareUrl, '_blank');
+            });
+        });
+    </script>
+</body>
+</html>
