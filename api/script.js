@@ -1,7 +1,6 @@
-// /api/proxy.js
 export default async function handler(req, res) {
   const { name } = req.query;
-
+  
   if (!name) {
     return res.status(400).json({ error: 'Peer name is required' });
   }
@@ -15,7 +14,6 @@ export default async function handler(req, res) {
     
     const data = await response.json();
     
-    // Return the data from the API
     return res.status(200).json(data);
   } catch (error) {
     return res.status(500).json({ error: error.message || 'Failed to fetch peer data' });
